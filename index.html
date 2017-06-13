@@ -2,287 +2,388 @@
 <html>
 
 <head>
-    <title>Geolocation</title>
-    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
-    <meta charset="utf-8">
-    <style>
-        /* Always set the map height explicitly to define the size of the div
+  <title>Geolocation</title>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <meta charset="utf-8">
+  <style>
+    /* Always set the map height explicitly to define the size of the div
        * element that contains the map. */
 
-        #map {
-            height: 100%; //border-radius: 50%;
-            //-moz-border-radius: 50%;
-            //-webkit-border-radius: 50%;
-            //border: solid 2px red;
-            z-index: 1;
-        }
-        /* Optional: Makes the sample page fill the window. */
+    #map {
+      height: 100%; //border-radius: 50%;
+      //-moz-border-radius: 50%;
+      //-webkit-border-radius: 50%;
+      //border: solid 2px red;
+      z-index: 1;
+    }
+    /* Optional: Makes the sample page fill the window. */
 
-        html,
-        body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
-    </style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
 </head>
 
 <body>
-    <div id="map"></div>
-    <script>
-        // Note: This example requires that you consent to location sharing when
-        // prompted by your browser. If you see the error "The Geolocation service
-        // failed.", it means you probably did not give permission for the browser to
-        // locate you.
+  <div id="map"></div>
+  <script>
+    // Note: This example requires that you consent to location sharing when
+    // prompted by your browser. If you see the error "The Geolocation service
+    // failed.", it means you probably did not give permission for the browser to
+    // locate you.
 
-        var service;
-        var map;
-        var infoWindow;
-        var markers = [];
-        var pos = {
-            lat: -34.397,
-            lng: 150.644
+    var service;
+    var map;
+    var infoWindow;
+    var markers = [];
+    var pos = {
+      lat: -34.397,
+      lng: 150.644
+    };
+
+    function initMap() {
+      var options = {
+        //  scrollwheel: false,
+        //    navigationControl: false,
+        //  mapTypeControl: false,
+        //  scaleControl: false,
+        //  draggable: false,
+        center: pos,
+        zoom: 15,
+        //  disableDefaultUI: true,
+        streetViewControl: false,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      };
+
+
+      map = new google.maps.Map(document.getElementById('map'), options);
+      infoWindow = new google.maps.InfoWindow({
+        map: map
+      });
+
+      // Try HTML5 geolocation.
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          drawCurrentPos();
+          drawKnownPlaces();
+          //  nearbySearch();
+
+
+        }, function() {
+          handleLocationError(true, infoWindow, map.getCenter());
+        });
+      } else {
+        // Browser doesn't support Geolocation
+        handleLocationError(false, infoWindow, map.getCenter());
+      }
+      //google.maps.event.addListener(map, 'bounds_changed', function() {
+      google.maps.event.addListener(map, 'idle', function() {
+        //nearbySearch();
+        drawKnownPlaces();
+      });
+
+    }
+
+    function drawCurrentPos() {
+      var marker = new google.maps.Marker({
+        position: pos,
+        map: map,
+        icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+        title: "You are here!"
+      });
+      map.setCenter(pos);
+
+    }
+
+    async function nearbySearch() {
+      await clearMarkers();
+      var request = {
+        location: pos,
+        radius: '5000'
+        //  types: ['store']
+      };
+      service = new google.maps.places.PlacesService(map);
+      service.nearbySearch(request, callback);
+      console.log("SEARCH");
+    }
+
+    // Removes the markers from the map, but keeps them in the array.
+    function clearMarkers() {
+      for (var i = 0; i < markers.length; i++) {
+        markers[i].setMap(null);
+      }
+      markers = [];
+      console.log("CLEAR");
+    }
+
+    function callback(results, status) {
+      if (status === google.maps.places.PlacesServiceStatus.OK) {
+        console.log(results);
+        results.forEach(createMarker);
+      }
+    }
+
+
+    var placeIDs = [{
+        id: 'ChIJNePuDBAosUcRUd83-VyI6MI',
+        icon: './icons/landmark.png'
+      },
+      {
+        id: 'ChIJzTifhbEpsUcRv_dUWHrzUA0',
+        icon: './icons/start.png'
+      },
+      {
+        id: 'ChIJ6d_ZgDImsUcRBL5oEOrb8UU',
+        icon: './icons/home.png'
+      },
+      {
+        id: 'ChIJQRQv9BkosUcRJA6c7ffoofs',
+        icon: './icons/finish.png'
+      }
+    ];
+
+    async function drawKnownPlaces() {
+      await clearMarkers();
+
+      for (var i = 0; i < placeIDs.length; i++) {
+        var id = placeIDs[i].id;
+        var request = {
+          placeId: id
+
         };
+        service = new google.maps.places.PlacesService(map);
+        await service.getDetails(request, callbackPlace);
+      }
+    }
 
-        function initMap() {
-            var options = {
-                //  scrollwheel: false,
-                //    navigationControl: false,
-                //  mapTypeControl: false,
-                //  scaleControl: false,
-                //  draggable: false,
-                center: pos,
-                zoom: 15,
-                //  disableDefaultUI: true,
-                streetViewControl: false,
-                mapTypeId: google.maps.MapTypeId.ROADMAP
-            };
-
-
-            map = new google.maps.Map(document.getElementById('map'), options);
-            infoWindow = new google.maps.InfoWindow({
-                map: map
-            });
-
-            // Try HTML5 geolocation.
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    pos = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    drawCurrentPos();
-                    drawKnownPlaces();
-                    //  nearbySearch();
+    function callbackPlace(place, status) {
+      if (status === google.maps.places.PlacesServiceStatus.OK) {
+        for (var i = 0; i < placeIDs.length; i++) {
+          var id = placeIDs[i].id;
+          if (place.place_id === id) {
+            place.icon = placeIDs[i].icon;
+          }
+        }
+        createMarker(place);
+      } else {
+        console.log("ERROR: ", status);
+      }
+    }
 
 
-                }, function() {
-                    handleLocationError(true, infoWindow, map.getCenter());
-                });
+    function createViewBox() {
+      var viewportBox;
+      var bounds = map.getBounds();
+
+      var ne = bounds.getNorthEast();
+      var sw = bounds.getSouthWest();
+
+      var viewportPoints = [
+        ne, new google.maps.LatLng(ne.lat(), sw.lng()),
+        sw, new google.maps.LatLng(sw.lat(), ne.lng()), ne
+      ];
+      /*strokeOpacity = 0 , if don't want to show the border moving. */
+      if (viewportBox) {
+        viewportBox.setPath(viewportPoints);
+      } else {
+        viewportBox = new google.maps.Polyline({
+          path: viewportPoints,
+          strokeColor: '#FF0000',
+          strokeOpacity: 1.0,
+          strokeWeight: 4
+        });
+        //viewportBox.setMap(map);
+      };
+      return viewportBox;
+    }
+
+    async function createMarker(place) {
+      //console.log("PLACE: ", place.name);
+      var viewportBox = await createViewBox();
+
+      if (!google.maps.geometry.poly.containsLocation(place.geometry.location, viewportBox)) {
+        var padding = 0.001;
+
+        var bounds = map.getBounds();
+        var sw = bounds.getSouthWest();
+        var ne = bounds.getNorthEast();
+        var m = (place.geometry.location.lat() - pos.lat) / (place.geometry.location.lng() - pos.lng);
+
+        var placeLoc;
+        var x, y;
+        var compl = false;
+        if (ne.lng() <= place.geometry.location.lng()) {
+          y = m * (ne.lng() - pos.lng) + pos.lat;
+          x = ne.lng() - padding;
+
+        } else if (sw.lng() >= place.geometry.location.lng()) {
+          y = m * (sw.lng() - pos.lng) + pos.lat;
+          x = sw.lng() + (padding);
+        }
+        if (y <= ne.lat() && y >= sw.lat()) {
+          compl = true;
+        }
+        if ((!compl)) {
+          if (ne.lat() <= place.geometry.location.lat()) {
+            x = (ne.lat() + m * pos.lng - pos.lat) / m;
+            y = ne.lat() - padding;;
+          } else if (sw.lat() >= place.geometry.location.lat()) {
+            x = (sw.lat() + m * pos.lng - pos.lat) / m;
+            y = sw.lat() + padding / 2;
+          }
+        }
+
+
+        placeLoc = {
+          lat: y,
+          lng: x
+        };
+        var image = {
+          url: place.icon,
+          //  size: new google.maps.Size(71, 71),
+          origin: new google.maps.Point(0, 0),
+          anchor: new google.maps.Point(17, 34),
+          scaledSize: new google.maps.Size(50, 50)
+        };
+        var marker = new google.maps.Marker({
+          map: map,
+          icon: image,
+          position: placeLoc
+          //  label: place.name
+        });
+        markers.push(marker);
+      }
+      var placeLoc = place.geometry.location;
+      var marker = new google.maps.Marker({
+        map: map,
+        position: placeLoc
+      });
+      //  markers.push(marker);
+
+
+      google.maps.event.addListener(marker, 'click', function() {
+        infoWindow.setContent(place.name);
+        infoWindow.open(map, this);
+      });
+    }
+
+    function handleLocationError(browserHasGeolocation, infoWindow, pos) {
+      infoWindow.setPosition(pos);
+      infoWindow.setContent(browserHasGeolocation ?
+        'Error: The Geolocation service failed.' :
+        'Error: Your browser doesn\'t support geolocation.');
+    }
+
+
+    // browser agnostic orientation
+    function getBrowserOrientation() {
+      var orientation;
+      if (screen.orientation && screen.orientation.type) {
+        orientation = screen.orientation.type;
+      } else {
+        orientation = screen.orientation ||
+          screen.mozOrientation ||
+          screen.msOrientation;
+      }
+
+      /*
+        'portait-primary':      for (screen width < screen height, e.g. phone, phablet, small tablet)
+                                  device is in 'normal' orientation
+                                for (screen width > screen height, e.g. large tablet, laptop)
+                                  device has been turned 90deg clockwise from normal
+        'portait-secondary':    for (screen width < screen height)
+                                  device has been turned 180deg from normal
+                                for (screen width > screen height)
+                                  device has been turned 90deg anti-clockwise (or 270deg clockwise) from normal
+        'landscape-primary':    for (screen width < screen height)
+                                  device has been turned 90deg clockwise from normal
+                                for (screen width > screen height)
+                                  device is in 'normal' orientation
+        'landscape-secondary':  for (screen width < screen height)
+                                  device has been turned 90deg anti-clockwise (or 270deg clockwise) from normal
+                                for (screen width > screen height)
+                                  device has been turned 180deg from normal
+      */
+
+      return orientation;
+    }
+
+
+    // called on device orientation change
+    function onHeadingChange(event) {
+      var heading = event.alpha;
+
+      if (typeof event.webkitCompassHeading !== "undefined") {
+        heading = event.webkitCompassHeading; //iOS non-standard
+      }
+
+      var orientation = getBrowserOrientation();
+
+      if (typeof heading !== "undefined" && heading !== null) { // && typeof orientation !== "undefined") {
+        // we have a browser that reports device heading and orientation
+
+
+        if (debug) {
+          debugOrientation.textContent = orientation;
+        }
+
+
+        // what adjustment we have to add to rotation to allow for current device orientation
+        var adjustment = 0;
+        if (defaultOrientation === "landscape") {
+          adjustment -= 90;
+        }
+
+        if (typeof orientation !== "undefined") {
+          var currentOrientation = orientation.split("-");
+
+          if (defaultOrientation !== currentOrientation[0]) {
+            if (defaultOrientation === "landscape") {
+              adjustment -= 270;
             } else {
-                // Browser doesn't support Geolocation
-                handleLocationError(false, infoWindow, map.getCenter());
+              adjustment -= 90;
             }
-            //google.maps.event.addListener(map, 'bounds_changed', function() {
-            google.maps.event.addListener(map, 'idle', function() {
-                //nearbySearch();
-                drawKnownPlaces();
-            });
+          }
 
+          if (currentOrientation[1] === "secondary") {
+            adjustment -= 180;
+          }
         }
 
-        function drawCurrentPos() {
-            var marker = new google.maps.Marker({
-                position: pos,
-                map: map,
-                icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-                title: "You are here!"
-            });
-            map.setCenter(pos);
+        positionCurrent.hng = heading + adjustment;
 
+        var phase = positionCurrent.hng < 0 ? 360 + positionCurrent.hng : positionCurrent.hng;
+        positionHng.textContent = (360 - phase | 0) + "°";
+
+
+        // apply rotation to compass rose
+        if (typeof rose.style.transform !== "undefined") {
+          //rose.style.transform = "rotateZ(" + positionCurrent.hng + "deg)";
+          console.log(positionCurrent.hng + "deg");
+        } else if (typeof rose.style.webkitTransform !== "undefined") {
+          rose.style.webkitTransform = "rotateZ(" + positionCurrent.hng + "deg)";
+          console.log(positionCurrent.hng + "deg");
         }
+      } else {
+        // device can't show heading
 
-        async function nearbySearch() {
-            await clearMarkers();
-            var request = {
-                location: pos,
-                radius: '5000'
-                //  types: ['store']
-            };
-            service = new google.maps.places.PlacesService(map);
-            service.nearbySearch(request, callback);
-            console.log("SEARCH");
-        }
-
-        // Removes the markers from the map, but keeps them in the array.
-        function clearMarkers() {
-            for (var i = 0; i < markers.length; i++) {
-                markers[i].setMap(null);
-            }
-            markers = [];
-            console.log("CLEAR");
-        }
-
-        function callback(results, status) {
-            if (status === google.maps.places.PlacesServiceStatus.OK) {
-                console.log(results);
-                results.forEach(createMarker);
-            }
-        }
+        //    positionHng.textContent = "n/a";
+        //showHeadingWarning();
+      }
+    }
 
 
-        var placeIDs = [{
-                id: 'ChIJNePuDBAosUcRUd83-VyI6MI',
-                icon: './icons/landmark.png'
-            },
-            {
-                id: 'ChIJzTifhbEpsUcRv_dUWHrzUA0',
-                icon: './icons/start.png'
-            },
-            {
-                id: 'ChIJ6d_ZgDImsUcRBL5oEOrb8UU',
-                icon: './icons/home.png'
-            },
-            {
-                id: 'ChIJQRQv9BkosUcRJA6c7ffoofs',
-                icon: './icons/finish.png'
-            }
-        ];
-
-        async function drawKnownPlaces() {
-            await clearMarkers();
-
-            for (var i = 0; i < placeIDs.length; i++) {
-                var id = placeIDs[i].id;
-                var request = {
-                    placeId: id
-
-                };
-                service = new google.maps.places.PlacesService(map);
-                await service.getDetails(request, callbackPlace);
-            }
-        }
-
-        function callbackPlace(place, status) {
-            if (status === google.maps.places.PlacesServiceStatus.OK) {
-                for (var i = 0; i < placeIDs.length; i++) {
-                    var id = placeIDs[i].id;
-                    if (place.place_id === id) {
-                        place.icon = placeIDs[i].icon;
-                    }
-                }
-                createMarker(place);
-            } else {
-                console.log("ERROR: ", status);
-            }
-        }
-
-
-        function createViewBox() {
-            var viewportBox;
-            var bounds = map.getBounds();
-
-            var ne = bounds.getNorthEast();
-            var sw = bounds.getSouthWest();
-
-            var viewportPoints = [
-                ne, new google.maps.LatLng(ne.lat(), sw.lng()),
-                sw, new google.maps.LatLng(sw.lat(), ne.lng()), ne
-            ];
-            /*strokeOpacity = 0 , if don't want to show the border moving. */
-            if (viewportBox) {
-                viewportBox.setPath(viewportPoints);
-            } else {
-                viewportBox = new google.maps.Polyline({
-                    path: viewportPoints,
-                    strokeColor: '#FF0000',
-                    strokeOpacity: 1.0,
-                    strokeWeight: 4
-                });
-                //viewportBox.setMap(map);
-            };
-            return viewportBox;
-        }
-
-        async function createMarker(place) {
-            //console.log("PLACE: ", place.name);
-            var viewportBox = await createViewBox();
-
-            if (!google.maps.geometry.poly.containsLocation(place.geometry.location, viewportBox)) {
-                var padding = 0.001;
-
-                var bounds = map.getBounds();
-                var sw = bounds.getSouthWest();
-                var ne = bounds.getNorthEast();
-                var m = (place.geometry.location.lat() - pos.lat) / (place.geometry.location.lng() - pos.lng);
-
-                var placeLoc;
-                var x, y;
-                var compl = false;
-                if (ne.lng() <= place.geometry.location.lng()) {
-                    y = m * (ne.lng() - pos.lng) + pos.lat;
-                    x = ne.lng() - padding;
-
-                } else if (sw.lng() >= place.geometry.location.lng()) {
-                    y = m * (sw.lng() - pos.lng) + pos.lat;
-                    x = sw.lng() + (padding);
-                }
-                if (y <= ne.lat() && y >= sw.lat()) {
-                    compl = true;
-                }
-                if ((!compl)) {
-                    if (ne.lat() <= place.geometry.location.lat()) {
-                        x = (ne.lat() + m * pos.lng - pos.lat) / m;
-                        y = ne.lat() - padding;;
-                    } else if (sw.lat() >= place.geometry.location.lat()) {
-                        x = (sw.lat() + m * pos.lng - pos.lat) / m;
-                        y = sw.lat() + padding / 2;
-                    }
-                }
-
-
-                placeLoc = {
-                    lat: y,
-                    lng: x
-                };
-                var image = {
-                    url: place.icon,
-                    //  size: new google.maps.Size(71, 71),
-                    origin: new google.maps.Point(0, 0),
-                    anchor: new google.maps.Point(17, 34),
-                    scaledSize: new google.maps.Size(50, 50)
-                };
-                var marker = new google.maps.Marker({
-                    map: map,
-                    icon: image,
-                    position: placeLoc
-                    //  label: place.name
-                });
-                markers.push(marker);
-            }
-            var placeLoc = place.geometry.location;
-            var marker = new google.maps.Marker({
-                map: map,
-                position: placeLoc
-            });
-            //  markers.push(marker);
-
-
-            google.maps.event.addListener(marker, 'click', function() {
-                infoWindow.setContent(place.name);
-                infoWindow.open(map, this);
-            });
-        }
-
-        function handleLocationError(browserHasGeolocation, infoWindow, pos) {
-            infoWindow.setPosition(pos);
-            infoWindow.setContent(browserHasGeolocation ?
-                'Error: The Geolocation service failed.' :
-                'Error: Your browser doesn\'t support geolocation.');
-        }
-    </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmUXs8dssxP7hTy0TCYm4brJUYJU01Vs0&libraries=places,geometry&callback=initMap">
-    </script>
+    window.addEventListener("deviceorientation", onHeadingChange);
+  </script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmUXs8dssxP7hTy0TCYm4brJUYJU01Vs0&libraries=places,geometry&callback=initMap">
+  </script>
 </body>
 
 </html>

@@ -10,11 +10,13 @@
        * element that contains the map. */
 
     #map {
-      height: 100%; //border-radius: 50%;
-      //-moz-border-radius: 50%;
+
+      height: 100%; //  padding-top: 100%;
+      //  width: 100%; //  border-radius: 50%;
+      //    -moz-border-radius: 50%;
       //-webkit-border-radius: 50%;
-      //border: solid 2px red;
-      z-index: 1;
+      //    border: solid 2px red;
+      z-index: 1; //transform: rotateZ(45deg);
     }
     /* Optional: Makes the sample page fill the window. */
 
@@ -55,7 +57,17 @@
         zoom: 15,
         //  disableDefaultUI: true,
         streetViewControl: false,
-        mapTypeId: google.maps.MapTypeId.ROADMAP
+        //  mapTypeId: google.maps.MapTypeId.ROADMAP,
+        mapTypeId: google.maps.MapTypeId.SATELLITE,
+        tilt: 0,
+        heading: 90,
+        styles: [{
+          featureType: "poi",
+          //elementType: "labels",
+          stylers: [{
+            visibility: "off"
+          }]
+        }]
       };
 
 
@@ -281,9 +293,34 @@
         'Error: Your browser doesn\'t support geolocation.');
     }
 
+    function rotate(degree) {
+
+      if (map != "undefined") {
+        var heading = map.getHeading() || 0;
+        console.log("heading" + heading);
+        map.setHeading(degree);
+      }
+      return;
+
+      var mapDiv = document.getElementById('map');
+      if (typeof mapDiv.style.transform !== "undefined") {
+        mapDiv.style.transform = "rotateZ(" + degree + "deg)";
+      } else if (typeof mapDiv.style.webkitTransform !== "undefined") {
+        mapDiv.style.webkitTransform = "rotateZ(" + degree + "deg)";
+      }
+      /* timer = setTimeout(function() {
+          rotate(++degree);
+      },5); */
+      for (var i = 0; i < markers.length; i++) {
+        var icon = markers[i].icon;
+        icon.roation = -degree;
+        markers[i].setIcon(icon);
+      }
+    }
 
     // browser agnostic orientation
     function getBrowserOrientation() {
+
       var orientation;
       if (screen.orientation && screen.orientation.type) {
         orientation = screen.orientation.type;
@@ -315,9 +352,17 @@
       return orientation;
     }
 
-
+    // our current position
+    var positionCurrent = {
+      lat: null,
+      lng: null,
+      hng: null
+    };
+    var defaultOrientation;
     // called on device orientation change
     function onHeadingChange(event) {
+
+      console.log("WAS MACHST DU");
       var heading = event.alpha;
 
       if (typeof event.webkitCompassHeading !== "undefined") {
@@ -328,11 +373,6 @@
 
       if (typeof heading !== "undefined" && heading !== null) { // && typeof orientation !== "undefined") {
         // we have a browser that reports device heading and orientation
-
-
-        if (debug) {
-          debugOrientation.textContent = orientation;
-        }
 
 
         // what adjustment we have to add to rotation to allow for current device orientation
@@ -360,17 +400,19 @@
         positionCurrent.hng = heading + adjustment;
 
         var phase = positionCurrent.hng < 0 ? 360 + positionCurrent.hng : positionCurrent.hng;
-        positionHng.textContent = (360 - phase | 0) + "°";
-
-
+        //  positionHng.textContent = (360 - phase | 0) + "°";
+        rotate(positionCurrent.hng);
+        console.log(positionCurrent.hng + "deg");
         // apply rotation to compass rose
-        if (typeof rose.style.transform !== "undefined") {
-          //rose.style.transform = "rotateZ(" + positionCurrent.hng + "deg)";
-          console.log(positionCurrent.hng + "deg");
-        } else if (typeof rose.style.webkitTransform !== "undefined") {
-          rose.style.webkitTransform = "rotateZ(" + positionCurrent.hng + "deg)";
-          console.log(positionCurrent.hng + "deg");
-        }
+        //  if (typeof rose.style.transform !== "undefined") {
+        //rose.style.transform = "rotateZ(" + positionCurrent.hng + "deg)";
+        console.log(positionCurrent.hng + "deg");
+
+        //      } else if (typeof rose.style.webkitTransform !== "undefined") {
+        //rose.style.webkitTransform = "rotateZ(" + positionCurrent.hng + "deg)";
+        console.log(positionCurrent.hng + "deg");
+
+        //}
       } else {
         // device can't show heading
 

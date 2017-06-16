@@ -33,7 +33,7 @@
       lat: -34.397,
       lng: 150.644
     };
-    var zoom = 10;
+    var zoom = 14;
     var view = new ol.View({
       center: ol.proj.transform([pos.lng, pos.lat], 'EPSG:4326', 'EPSG:3857'),
       rotation: rotation,
@@ -54,6 +54,7 @@
       }),
       view: view
     });
+    var markerLayer;
 
     function init() {
 
@@ -100,6 +101,7 @@
             });
 
             map.addLayer(vectorLayer);
+            drawKnownPlaces();
 
             //  map.setCenter(lonLat, zoom);
             console.log(ol.proj.get());
@@ -147,6 +149,115 @@
 
 
     }
+
+    var places = [{
+        lng: 8.809172,
+        lat: 53.074748,
+        icon: './icons/landmark.png'
+      },
+      {
+        lng: 8.769332,
+        lat: 53.098145,
+        icon: './icons/start.png'
+      },
+      {
+        lng: 8.878000,
+        lat: 53.097930,
+        icon: './icons/home.png'
+      },
+      {
+        lng: 8.805053,
+        lat: 53.074786,
+        icon: './icons/finish.png'
+      }
+    ];
+
+    async function drawKnownPlaces() {
+      await clearMarkers();
+      var vs = [];
+      for (var i = 0; i < places.length; i++) {
+        console.log(new ol.geom.Point([places[i].lng, places[i].lat]));
+        var iconFeature = new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.transform([places[i].lng, places[i].lat], 'EPSG:4326', 'EPSG:3857')),
+          name: 'undefined',
+          population: 4000,
+          rainfall: 500
+        });
+
+        var iconStyle = new ol.style.Style({
+          image: new ol.style.Icon( /** @type {olx.style.IconOptions} */ ({
+            //size: [50, 50],
+            scale: 0.1,
+            src: places[i].icon
+          }))
+        });
+        console.log(iconFeature.geometry);
+        iconFeature.setStyle(iconStyle);
+        vs.push(iconFeature);
+      }
+      console.log(vs);
+
+
+      var vectorSource = new ol.source.Vector({
+        features: vs
+      });
+
+      vectorLayer = new ol.layer.Vector({
+        source: vectorSource
+      });
+      markerLayer = vectorLayer;
+      map.addLayer(vectorLayer);
+    }
+
+    function clearMarkers() {
+      if (markerLayer) {
+        map.removeLayer(markerLayer);
+      }
+    }
+    var defaultOrientation;
+    // called on device orientation change
+    function onHeadingChange(event) {
+
+      console.log("WAS MACHST DU");
+      var heading = event.alpha;
+
+      if (typeof event.webkitCompassHeading !== "undefined") {
+        heading = event.webkitCompassHeading; //iOS non-standard
+      }
+
+      var orientation = getBrowserOrientation();
+
+      if (typeof heading !== "undefined" && heading !== null) { // TODO && typeof orientation !== "undefined") {
+        // we have a browser that reports device heading and orientation
+
+
+        // what adjustment we have to add to rotation to allow for current device orientation
+        var adjustment = 0;
+        if (defaultOrientation === "landscape") {
+          adjustment -= 90;
+        }
+
+        if (typeof orientation !== "undefined") {
+          var currentOrientation = orientation.split("-");
+
+          if (defaultOrientation !== currentOrientation[0]) {
+            if (defaultOrientation === "landscape") {
+              adjustment -= 270;
+            } else {
+              adjustment -= 90;
+            }
+          }
+
+          if (currentOrientation[1] === "secondary") {
+            adjustment -= 180;
+          }
+        }
+        rotaion = heading + adjustment;
+        view.setRotation(rotation)
+
+      }
+    }
+    window.addEventListener("deviceorientation", onHeadingChange);
   </script>
 </head>
 

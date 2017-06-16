@@ -214,6 +214,42 @@
         map.removeLayer(markerLayer);
       }
     }
+
+    // browser agnostic orientation
+    function getBrowserOrientation() {
+
+      var orientation;
+      if (screen.orientation && screen.orientation.type) {
+        orientation = screen.orientation.type;
+      } else {
+        orientation = screen.orientation ||
+          screen.mozOrientation ||
+          screen.msOrientation;
+      }
+
+      /*
+        'portait-primary':      for (screen width < screen height, e.g. phone, phablet, small tablet)
+                                  device is in 'normal' orientation
+                                for (screen width > screen height, e.g. large tablet, laptop)
+                                  device has been turned 90deg clockwise from normal
+        'portait-secondary':    for (screen width < screen height)
+                                  device has been turned 180deg from normal
+                                for (screen width > screen height)
+                                  device has been turned 90deg anti-clockwise (or 270deg clockwise) from normal
+        'landscape-primary':    for (screen width < screen height)
+                                  device has been turned 90deg clockwise from normal
+                                for (screen width > screen height)
+                                  device is in 'normal' orientation
+        'landscape-secondary':  for (screen width < screen height)
+                                  device has been turned 90deg anti-clockwise (or 270deg clockwise) from normal
+                                for (screen width > screen height)
+                                  device has been turned 180deg from normal
+      */
+
+      return orientation;
+    }
+
+
     var defaultOrientation;
     // called on device orientation change
     function onHeadingChange(event) {

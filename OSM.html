@@ -57,59 +57,12 @@
       view: view
     });
     var markerLayer;
+    var currentLayer; //TODO: besser machen
 
     function init() {
 
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            pos = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude
-            };
-            //    drawCurrentPos();
-            //    drawKnownPlaces();
-            //  nearbySearch();
-
-            /*
-                  var markers = new OpenLayers.Layer.Markers("Markers");
-                  map.addLayer(markers);
-                  markers.addMarker(new OpenLayers.Marker(position));
-            */
-
-            var iconFeature = new ol.Feature({
-              geometry: new ol.geom.Point(ol.proj.transform([pos.lng, pos.lat], 'EPSG:4326', 'EPSG:3857')),
-              name: 'Hier bin ich',
-              population: 4000,
-              rainfall: 500
-            });
-
-            var iconStyle = new ol.style.Style({
-              image: new ol.style.Icon( /** @type {olx.style.IconOptions} */ ({
-                anchor: [0.5, 46],
-                anchorXUnits: 'fraction',
-                anchorYUnits: 'pixels',
-                src: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-              }))
-            });
-
-            iconFeature.setStyle(iconStyle);
-
-            var vectorSource = new ol.source.Vector({
-              features: [iconFeature]
-            });
-
-            var vectorLayer = new ol.layer.Vector({
-              source: vectorSource
-            });
-
-            map.addLayer(vectorLayer);
-            drawKnownPlaces();
-
-            //  map.setCenter(lonLat, zoom);
-            console.log("center" + [pos.lng, pos.lat]);
-            map.getView().setCenter(ol.proj.transform([pos.lng, pos.lat], 'EPSG:4326', 'EPSG:3857'));
-
-          },
+        navigator.geolocation.watchPosition(onPosChanged,
           function() {
             //TODO:  handleLocationError(true, infoWindow, map.getCenter());
           });
@@ -147,8 +100,62 @@
         }
       });
 
+    }
 
+    function onPosChanged(position) {
+      pos = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+      //    drawCurrentPos();
+      //    drawKnownPlaces();
+      //  nearbySearch();
 
+      /*
+            var markers = new OpenLayers.Layer.Markers("Markers");
+            map.addLayer(markers);
+            markers.addMarker(new OpenLayers.Marker(position));
+      */
+
+      drawCurrentPos();
+      drawKnownPlaces();
+
+      //  map.setCenter(lonLat, zoom);
+      console.log("center" + [pos.lng, pos.lat]);
+      map.getView().setCenter(ol.proj.transform([pos.lng, pos.lat], 'EPSG:4326', 'EPSG:3857'));
+    }
+
+    function drawCurrentPos() {
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+      var iconFeature = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.transform([pos.lng, pos.lat], 'EPSG:4326', 'EPSG:3857')),
+        name: 'Hier bin ich',
+        population: 4000,
+        rainfall: 500
+      });
+
+      var iconStyle = new ol.style.Style({
+        image: new ol.style.Icon( /** @type {olx.style.IconOptions} */ ({
+          anchor: [0.5, 46],
+          anchorXUnits: 'fraction',
+          anchorYUnits: 'pixels',
+          src: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+        }))
+      });
+
+      iconFeature.setStyle(iconStyle);
+
+      var vectorSource = new ol.source.Vector({
+        features: [iconFeature]
+      });
+
+      var vectorLayer = new ol.layer.Vector({
+        source: vectorSource
+      });
+      currentLayer = vectorLayer;
+      map.addLayer(vectorLayer);
     }
 
 
@@ -192,25 +199,22 @@
           compl = true;
         }
         if ((!compl)) {
-          console.log("compl");
+
           if (bounds.maxy <= place.lat) {
-            console.log("compl1", bounds.maxy, place.lat);
+
             x = (bounds.maxy + m * pos.lng - pos.lat) / m;
             y = bounds.maxy - padding;;
           } else if (bounds.miny >= place.lat) {
-            console.log("comp2");
+
             x = (bounds.miny + m * pos.lng - pos.lat) / m;
             y = bounds.miny + padding / 2;
           }
         }
 
-
         placeLoc = {
           lat: y,
           lng: x
         };
-        console.log(placeLoc);
-
 
         var iconFeature = new ol.Feature({
           geometry: new ol.geom.Point(ol.proj.transform([placeLoc.lng, placeLoc.lat], 'EPSG:4326', 'EPSG:3857')),
@@ -220,11 +224,11 @@
         });
 
 
-
+        //console.log(distance, place.icon, 0.3 - distance);
         var iconStyle = new ol.style.Style({
           image: new ol.style.Icon( /** @type {olx.style.IconOptions} */ ({
             //size: [50, 50],
-            scale: 0.2 - distance,
+            scale: 0.3 - distance * 1.5,
             src: place.icon
           }))
         });
@@ -250,13 +254,13 @@
     }
 
     var places = [{
-        lng: 8.809172,
-        lat: 53.074748,
+        lng: 8.769332,
+        lat: 53.098145,
         icon: './icons/landmark.png'
       },
       {
-        lng: 8.769332,
-        lat: 53.098145,
+        lng: 8.809172,
+        lat: 53.074748,
         icon: './icons/start.png'
       },
       {
@@ -279,8 +283,6 @@
 
         await createMarker(places[i], vs);
       }
-      console.log(vs);
-
       var vectorSource = new ol.source.Vector({
         features: vs
       });
@@ -289,7 +291,6 @@
         source: vectorSource
       });
       markerLayer = vectorLayer;
-      console.log(vectorLayer);
       map.addLayer(vectorLayer);
     }
 
@@ -374,12 +375,24 @@
         }
         //deg to rad
         rotation = (heading + adjustment) * Math.PI / 180;
-        view.setRotation(rotation)
+        view.setRotation(rotation);
+        drawKnownPlaces();
+
         console.log(rotation);
       }
     }
 
     window.addEventListener("deviceorientation", onHeadingChange);
+
+
+    var geolocation = new ol.Geolocation({
+      // take the projection to use from the map's view
+      projection: view.getProjection()
+    });
+    // listen to changes in position
+    geolocation.on('change', function(evt) {
+      console.log("POS EVENT: " + geolocation.getPosition());
+    });
   </script>
 </head>
 

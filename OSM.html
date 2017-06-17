@@ -33,7 +33,7 @@
       lat: -34.397,
       lng: 150.644
     };
-    var zoom = 14;
+    var zoom = 15;
     var view = new ol.View({
       center: ol.proj.transform([pos.lng, pos.lat], 'EPSG:4326', 'EPSG:3857'),
       rotation: rotation,
@@ -104,7 +104,6 @@
             drawKnownPlaces();
 
             //  map.setCenter(lonLat, zoom);
-            console.log(ol.proj.get());
             console.log("center" + [pos.lng, pos.lat]);
             map.getView().setCenter(ol.proj.transform([pos.lng, pos.lat], 'EPSG:4326', 'EPSG:3857'));
 
@@ -150,6 +149,104 @@
 
     }
 
+
+    function distanceBetweenPoints(latlng1, latlng2) {
+      var line = new ol.geom.LineString([latlng1, latlng2]);
+      return line.getLength();
+    }
+
+    function getBounds() {
+      var extent = map.getView().calculateExtent(map.getSize());
+      extent = ol.proj.transformExtent(extent, 'EPSG:3857', 'EPSG:4326');
+      return extent;
+    }
+
+    async function createMarker(place, vs) {
+      //console.log("PLACE: ", place.name);
+      var bounds = await getBounds();
+      var home = [places[2].lng, places[2].lat];
+      var distance = distanceBetweenPoints(home, [place.lng, place.lat]);
+      console.log(distance);
+
+      if (!ol.extent.containsCoordinate(bounds, [place.lng, place.lat])) {
+        var padding = 0.002 - distance / 100;
+        var m = (place.lat - pos.lat) / (place.lng - pos.lng);
+
+        var placeLoc;
+        var x, y;
+        var compl = false;
+        bounds.maxx = bounds[2];
+        bounds.maxy = bounds[3];
+        bounds.minx = bounds[0];
+        bounds.miny = bounds[1];
+        if (bounds.maxx <= place.lng) {
+          y = m * (bounds.maxx - pos.lng) + pos.lat;
+          x = bounds.maxx - padding;
+        } else if (bounds.minx >= place.lng) {
+          y = m * (bounds.minx - pos.lng) + pos.lat;
+          x = bounds.minx + (padding);
+        }
+        if (y <= bounds.maxy && y >= bounds.miny) {
+          compl = true;
+        }
+        if ((!compl)) {
+          console.log("compl");
+          if (bounds.maxy <= place.lat) {
+            console.log("compl1", bounds.maxy, place.lat);
+            x = (bounds.maxy + m * pos.lng - pos.lat) / m;
+            y = bounds.maxy - padding;;
+          } else if (bounds.miny >= place.lat) {
+            console.log("comp2");
+            x = (bounds.miny + m * pos.lng - pos.lat) / m;
+            y = bounds.miny + padding / 2;
+          }
+        }
+
+
+        placeLoc = {
+          lat: y,
+          lng: x
+        };
+        console.log(placeLoc);
+
+
+        var iconFeature = new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.transform([placeLoc.lng, placeLoc.lat], 'EPSG:4326', 'EPSG:3857')),
+          name: 'undefined',
+          population: 4000,
+          rainfall: 500
+        });
+
+
+
+        var iconStyle = new ol.style.Style({
+          image: new ol.style.Icon( /** @type {olx.style.IconOptions} */ ({
+            //size: [50, 50],
+            scale: 0.2 - distance,
+            src: place.icon
+          }))
+        });
+        iconFeature.setStyle(iconStyle);
+        vs.push(iconFeature);
+      }
+      var iconFeature = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.transform([place.lng, place.lat], 'EPSG:4326', 'EPSG:3857')),
+        name: 'undefined',
+        population: 4000,
+        rainfall: 500
+      });
+
+      var iconStyle = new ol.style.Style({
+        image: new ol.style.Icon( /** @type {olx.style.IconOptions} */ ({
+          //size: [50, 50],
+          scale: 0.1,
+          src: place.icon
+        }))
+      });
+      iconFeature.setStyle(iconStyle);
+      vs.push(iconFeature);
+    }
+
     var places = [{
         lng: 8.809172,
         lat: 53.074748,
@@ -174,29 +271,13 @@
 
     async function drawKnownPlaces() {
       await clearMarkers();
+
       var vs = [];
       for (var i = 0; i < places.length; i++) {
-        console.log(new ol.geom.Point([places[i].lng, places[i].lat]));
-        var iconFeature = new ol.Feature({
-          geometry: new ol.geom.Point(ol.proj.transform([places[i].lng, places[i].lat], 'EPSG:4326', 'EPSG:3857')),
-          name: 'undefined',
-          population: 4000,
-          rainfall: 500
-        });
 
-        var iconStyle = new ol.style.Style({
-          image: new ol.style.Icon( /** @type {olx.style.IconOptions} */ ({
-            //size: [50, 50],
-            scale: 0.1,
-            src: places[i].icon
-          }))
-        });
-        console.log(iconFeature.geometry);
-        iconFeature.setStyle(iconStyle);
-        vs.push(iconFeature);
+        await createMarker(places[i], vs);
       }
       console.log(vs);
-
 
       var vectorSource = new ol.source.Vector({
         features: vs
@@ -206,6 +287,7 @@
         source: vectorSource
       });
       markerLayer = vectorLayer;
+      console.log(vectorLayer);
       map.addLayer(vectorLayer);
     }
 
@@ -250,11 +332,11 @@
     }
 
 
+
     var defaultOrientation;
     // called on device orientation change
     function onHeadingChange(event) {
 
-      console.log("WAS MACHST DU");
       var heading = event.alpha;
 
       if (typeof event.webkitCompassHeading !== "undefined") {
@@ -288,11 +370,13 @@
             adjustment -= 180;
           }
         }
-        rotaion = heading + adjustment;
+        //deg to rad
+        rotation = (heading + adjustment) * Math.PI / 180;
         view.setRotation(rotation)
-
+        console.log(rotation);
       }
     }
+
     window.addEventListener("deviceorientation", onHeadingChange);
   </script>
 </head>

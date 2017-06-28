@@ -342,7 +342,7 @@
 
       var heading = event.alpha;
 
-      if (typeof event.webkitCompassHeading !== "undefined") {
+      if (event.webkitCompassHeading) {
         heading = event.webkitCompassHeading; //iOS non-standard
       }
 
@@ -379,6 +379,7 @@
         drawKnownPlaces();
 
         console.log(rotation);
+        console.log(heading);
       }
     }
 
